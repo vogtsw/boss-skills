@@ -22,6 +22,8 @@ ARCHIVE_FILES = (
     "judgment_skill.md",
     "management_skill.md",
     "persona_skill.md",
+    "rubric.json",
+    "decision_rules.md",
 )
 
 

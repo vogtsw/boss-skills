@@ -20,9 +20,12 @@ Eventually, you may not need the boss anymore.
 
 > *"Are you still a coding traitor if you build large models? You will kill the bosses, then the entrepreneurs, then the capitalists, and finally liberate all humankind."*
 
-It now has a second capability line:
+It now has more capability lines:
 
 - directly generate a boss template inspired by famous entrepreneurs such as Elon Musk, Steve Jobs, Jeff Bezos, and Jensen Huang
+- distill the boss's thinking into a **decision case base + review rubric + decision rules + scene playbooks**, so the skill judges like the boss instead of only sounding like the boss
+- quantify fidelity with **decision replay evaluation**
+- build a persona for a **mentor / PI / public figure** from free public sources (papers, GitHub, Wikipedia, interviews) when no private chat material exists
 
 [Data Sources](#data-sources) · [Installation](#installation) · [Usage](#usage) · [New Feature Entrepreneur Archetype Mode](#new-feature-entrepreneur-archetype-mode) · [Examples](#examples) · [Structure](#generated-skill-structure) · [Detailed Install Guide](INSTALL.md) · [中文](README.md)
 
@@ -89,6 +92,8 @@ After generation, you can use:
 | `/{slug}-judgment` | Use only the boss judgment lens |
 | `/{slug}-management` | Use only the managing-up guidance |
 | `/{slug}-persona` | Use only the boss speaking and behavior style |
+| `/{slug}-drill {scene}` | Drill mode: the skill plays the boss for multiple turns, then debriefs against the rubric |
+| `/boss-eval {slug}` | Run the decision replay eval and report the fidelity score |
 | `/boss-rollback {slug} {version}` | Roll back to a previous version |
 | `/delete-boss {slug}` | Delete a boss skill |
 
@@ -128,6 +133,50 @@ This mode is useful for:
 The goal is not to imitate catchphrases. The goal is to abstract public management patterns: decision rules, communication style, review standards, and execution rhythm.
 
 If you are a developer, the implementation still relies on `tools/skill_writer.py` and the `archetypes/` directory, but that is an internal mechanism rather than the main user-facing workflow.
+
+---
+
+## New Feature: Structured Decision Layer (judge like the boss, not just sound like the boss)
+
+The skill first extracts **structured decision events** from raw material, then induces an executable decision model:
+
+| Artifact | Content |
+|------|------|
+| `cases/*.json` | Decision case base: situation → options → the boss's choice → rationale → original quote → source |
+| `rubric.json` | Review scorecard: the boss's hard checklist (blocker / major / minor items) |
+| `decision_rules.md` | IF/THEN decision rules, each backed by case evidence and a confidence level |
+| `playbooks/*.md` | Scene workflows (bad news, resource request, pitch) with expected boss reactions and failure branches |
+
+Runtime logic becomes:
+
+`identify the scene -> follow the playbook -> check every rubric item -> apply decision rules -> retrieve similar cases and quote the boss -> respond in the boss's style`
+
+**Decision replay evaluation**: hold out 20% of historical decisions, blind-predict the boss's real choices with the distilled model, and use the hit rate as the fidelity score. Re-run after every correction or material merge to catch regressions.
+
+---
+
+## New Feature: Public Research Mode (mentor / PI / public figure)
+
+No chat logs needed. `tools/person_research.py` aggregates 6 **free, no-API-key** public sources:
+
+| Source | Best for | What you get |
+|------|------|------|
+| OpenAlex | academic advisors / PIs | author profile, research topics, top-cited papers |
+| Semantic Scholar | academic advisors / PIs | h-index, paper abstracts |
+| arXiv | AI / STEM advisors | latest preprints (what they are betting on now) |
+| Crossref | any academic | publication metadata |
+| GitHub | engineering bosses | public repos, tech stack, bio |
+| Wikipedia | public figures / entrepreneurs | biography summary |
+
+Just ask in natural language:
+
+```text
+Build a persona of my advisor. His name is XXX, he works on XX at XX University.
+```
+
+The skill searches, disambiguates same-name candidates, saves raw results into `knowledge/research/`, and distills the persona with evidence levels:
+`private (real chats) > public-quote (public original words) > public-inferred (inference from public material)`.
+Every public-sourced claim carries its source. Real private material always outranks public inference.
 
 ---
 
@@ -193,17 +242,20 @@ Boss.skill > Why does this feature deserve to exist?
 
 ## Generated Skill Structure
 
-Each boss skill has three parts:
+Each boss skill has three narrative parts plus a decision layer:
 
 | Part | Content |
 |------|------|
 | **Part A — Boss Judgment** | How this boss evaluates projects, plans, progress, risk, resources, and people |
 | **Part B — Managing Up** | How you should sync upward, report risk, pitch plans, ask for resources, and fight for priority |
 | **Part C — Persona** | The boss's communication style, emotional logic, management posture, and pressure state |
+| **Decision layer** | `cases/` case base, `rubric.json` scorecard, `decision_rules.md` rules, `playbooks/` scene workflows |
 
 Execution logic:
 
-`Receive a question -> Persona sets tone and posture -> Judgment evaluates the work -> Management gives concrete upward-management actions -> respond in the boss's style`
+`Receive a question -> identify the scene -> playbook/rubric/rules drive the judgment -> retrieve similar cases -> Persona sets tone -> Management gives concrete upward-management actions -> respond in the boss's style`
+
+See [`bosses/example-laozhou/`](bosses/example-laozhou/) for a complete example including the decision layer.
 
 ---
 
@@ -231,6 +283,11 @@ boss-skills/
 │   ├── judgment_builder.md
 │   ├── management_builder.md
 │   ├── persona_builder.md
+│   ├── decision_extractor.md
+│   ├── decision_model_builder.md
+│   ├── playbook_builder.md
+│   ├── person_researcher.md
+│   ├── replay_evaluator.md
 │   ├── merger.md
 │   └── correction_handler.md
 ├── tools/
@@ -238,6 +295,8 @@ boss-skills/
 │   ├── wechat_parser.py
 │   ├── feishu_parser.py
 │   ├── email_parser.py
+│   ├── person_research.py
+│   ├── replay_eval.py
 │   ├── skill_writer.py
 │   └── version_manager.py
 ├── archetypes/
@@ -257,6 +316,8 @@ boss-skills/
 
 - Source quality determines skill quality: real chats, review comments, and meeting notes are much better than surface description alone
 - The most valuable material is usually when the boss criticizes a project, asks hard questions, or makes tradeoffs
-- If you only provide tone and no project material, the result may sound like the boss without actually judging like the boss
+- If you only provide tone and no project material, the result may sound like the boss without actually judging like the boss — the decision layer (cases/rubric/rules) exists exactly to fix this, and is only generated when the material contains real tradeoffs
 - Entrepreneur archetype mode is for style simulation, not a claim of exact replication of a real person
-- This is still a first structured version. Later it can grow into IM auto-collection, structured note extraction, and hybrid real-boss plus archetype modes
+- Public research mode uses only freely accessible public data, labels every claim with its evidence level and source, and does not claim to reproduce a private personality
+- Replay eval results fluctuate when there are fewer than 10 cases; treat them as a reference only
+- Later it can grow into IM auto-collection, structured note extraction, and hybrid real-boss plus archetype modes

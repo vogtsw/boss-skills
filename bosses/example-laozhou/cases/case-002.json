@@ -1,0 +1,13 @@
+{
+  "id": "case-002",
+  "scene": "报坏消息",
+  "situation": "核心服务上线延期 3 天,负责人提前一天主动同步,并带了补救排期",
+  "options_visible": ["批评并升级管控", "接受补救方案继续推进"],
+  "boss_questions": ["影响范围是什么?", "需要我拍板什么?"],
+  "decision": "接受补救方案,要求每日同步进度,未批评",
+  "rationale": "进度慢不是最大问题,最差的是慢了还不提前说",
+  "quote": "提前说了就还有得救,需要我拍板什么直接讲",
+  "outcome": "延期 3 天后上线,无追责",
+  "confidence": "high",
+  "source": "knowledge/chats/2026-04-02-delay.txt"
+}

@@ -9,6 +9,9 @@ Supports:
 - deleting an existing boss skill
 - listing bundled entrepreneur archetypes
 - creating a boss skill from a bundled archetype
+- adding structured decision cases (cases/*.json)
+- setting the decision rubric (rubric.json) and decision rules (decision_rules.md)
+- adding scene playbooks (playbooks/*.md)
 """
 
 from __future__ import annotations
@@ -59,10 +62,18 @@ user-invocable: true
 
 When evaluating any project, plan, status update, risk, or escalation:
 
-1. Start with Part C to set tone, pressure level, and communication style.
-2. Use Part A to evaluate the proposal, timing, risk, ownership, and tradeoffs.
-3. Use Part B to give concrete managing-up advice and reporting actions.
-4. Respond in the style of this boss without roleplaying fake private facts.
+1. Identify the scene (review, bad news, resource request, weekly report, risk escalation).
+2. If `playbooks/` has a matching playbook, follow its steps and expected boss reactions.
+3. If `rubric.json` exists, check the proposal against every rubric item before answering;
+   report failed blockers explicitly. If `decision_rules.md` exists, apply matching rules.
+4. If `cases/` exists, retrieve the most similar past decisions and use them as few-shot
+   evidence; quote the boss's original words when available.
+5. Start with Part C to set tone, pressure level, and communication style.
+6. Use Part A to evaluate the proposal, timing, risk, ownership, and tradeoffs.
+7. Use Part B to give concrete managing-up advice and reporting actions.
+8. Respond in the style of this boss without roleplaying fake private facts.
+9. In drill mode (user asks to rehearse), roleplay the boss across multiple turns
+   following the playbook's expected reactions and failure branches.
 """
 
 
@@ -196,6 +207,9 @@ def create_skill(
     (skill_dir / "knowledge" / "docs").mkdir(parents=True, exist_ok=True)
     (skill_dir / "knowledge" / "emails").mkdir(parents=True, exist_ok=True)
     (skill_dir / "knowledge" / "meetings").mkdir(parents=True, exist_ok=True)
+    (skill_dir / "knowledge" / "research").mkdir(parents=True, exist_ok=True)
+    (skill_dir / "cases").mkdir(exist_ok=True)
+    (skill_dir / "playbooks").mkdir(exist_ok=True)
 
     (skill_dir / "judgment.md").write_text(judgment_content, encoding="utf-8")
     (skill_dir / "management.md").write_text(management_content, encoding="utf-8")
@@ -240,6 +254,8 @@ def update_skill(
         "judgment_skill.md",
         "management_skill.md",
         "persona_skill.md",
+        "rubric.json",
+        "decision_rules.md",
     ):
         src = skill_dir / fname
         if src.exists():
@@ -370,6 +386,59 @@ def create_from_archetype(base_dir: Path, archetypes_dir: Path, archetype_slug: 
     return create_skill(base_dir, slug, meta, judgment, management, persona)
 
 
+def add_case(skill_dir: Path, case_path: Path) -> Path:
+    """Validate and store a decision case JSON into cases/."""
+    case = read_json(case_path)
+    required = ("id", "scene", "situation", "decision")
+    missing = [key for key in required if not case.get(key)]
+    if missing:
+        raise ValueError(f"case missing required fields: {', '.join(missing)}")
+
+    cases_dir = skill_dir / "cases"
+    cases_dir.mkdir(exist_ok=True)
+    out_path = cases_dir / f"{case['id']}.json"
+    out_path.write_text(json.dumps(case, ensure_ascii=False, indent=2), encoding="utf-8")
+    return out_path
+
+
+def list_cases(skill_dir: Path) -> list[dict]:
+    cases_dir = skill_dir / "cases"
+    if not cases_dir.exists():
+        return []
+    cases = []
+    for case_path in sorted(cases_dir.glob("*.json")):
+        try:
+            case = read_json(case_path)
+        except Exception:
+            continue
+        cases.append(case)
+    return cases
+
+
+def set_rubric(skill_dir: Path, rubric_path: Path) -> Path:
+    rubric = read_json(rubric_path)
+    if not isinstance(rubric.get("items"), list) or not rubric["items"]:
+        raise ValueError("rubric.json must contain a non-empty 'items' list")
+    out_path = skill_dir / "rubric.json"
+    out_path.write_text(json.dumps(rubric, ensure_ascii=False, indent=2), encoding="utf-8")
+    return out_path
+
+
+def set_rules(skill_dir: Path, rules_path: Path) -> Path:
+    out_path = skill_dir / "decision_rules.md"
+    out_path.write_text(read_text(rules_path), encoding="utf-8")
+    return out_path
+
+
+def add_playbook(skill_dir: Path, playbook_path: Path, scene: Optional[str]) -> Path:
+    playbooks_dir = skill_dir / "playbooks"
+    playbooks_dir.mkdir(exist_ok=True)
+    name = scene or playbook_path.stem
+    out_path = playbooks_dir / f"{slugify(name)}.md"
+    out_path.write_text(read_text(playbook_path), encoding="utf-8")
+    return out_path
+
+
 def read_optional(path_str: Optional[str]) -> Optional[str]:
     if not path_str:
         return None
@@ -410,7 +479,19 @@ def main() -> None:
     parser.add_argument(
         "--action",
         required=True,
-        choices=["create", "update", "list", "delete", "list-archetypes", "create-archetype"],
+        choices=[
+            "create",
+            "update",
+            "list",
+            "delete",
+            "list-archetypes",
+            "create-archetype",
+            "add-case",
+            "list-cases",
+            "set-rubric",
+            "set-rules",
+            "add-playbook",
+        ],
     )
     parser.add_argument("--slug")
     parser.add_argument("--name")
@@ -424,6 +505,11 @@ def main() -> None:
     parser.add_argument("--base-dir", default="./bosses")
     parser.add_argument("--archetypes-dir", default="./archetypes")
     parser.add_argument("--archetype")
+    parser.add_argument("--case", help="path to a decision case JSON for add-case")
+    parser.add_argument("--rubric", help="path to a rubric JSON for set-rubric")
+    parser.add_argument("--rules", help="path to a decision_rules.md for set-rules")
+    parser.add_argument("--playbook", help="path to a playbook markdown for add-playbook")
+    parser.add_argument("--scene", help="scene name for add-playbook, e.g. report-bad-news")
     args = parser.parse_args()
 
     base_dir = Path(args.base_dir).expanduser()
@@ -452,6 +538,50 @@ def main() -> None:
         skill_dir = create_from_archetype(base_dir, archetypes_dir, args.archetype, args.slug)
         print(f"Created archetype skill: {skill_dir}")
         print(f"Trigger command: /{skill_dir.name}")
+        return
+
+    if args.action in ("add-case", "list-cases", "set-rubric", "set-rules", "add-playbook"):
+        if not args.slug:
+            print(f"Error: {args.action} requires --slug", file=sys.stderr)
+            sys.exit(1)
+        skill_dir = base_dir / args.slug
+        if not skill_dir.exists():
+            print(f"Error: skill directory not found: {skill_dir}", file=sys.stderr)
+            sys.exit(1)
+
+        if args.action == "add-case":
+            if not args.case:
+                print("Error: add-case requires --case", file=sys.stderr)
+                sys.exit(1)
+            out = add_case(skill_dir, Path(args.case))
+            print(f"Added case: {out}")
+        elif args.action == "list-cases":
+            cases = list_cases(skill_dir)
+            if not cases:
+                print("No cases found.")
+            else:
+                print(f"Found {len(cases)} cases:\n")
+                for case in cases:
+                    print(f"[{case.get('id')}] {case.get('scene', '?')} | {case.get('situation', '')[:60]}")
+                    print(f"  decision: {case.get('decision', '')[:80]} | confidence: {case.get('confidence', '?')}\n")
+        elif args.action == "set-rubric":
+            if not args.rubric:
+                print("Error: set-rubric requires --rubric", file=sys.stderr)
+                sys.exit(1)
+            out = set_rubric(skill_dir, Path(args.rubric))
+            print(f"Rubric written: {out}")
+        elif args.action == "set-rules":
+            if not args.rules:
+                print("Error: set-rules requires --rules", file=sys.stderr)
+                sys.exit(1)
+            out = set_rules(skill_dir, Path(args.rules))
+            print(f"Decision rules written: {out}")
+        else:
+            if not args.playbook:
+                print("Error: add-playbook requires --playbook", file=sys.stderr)
+                sys.exit(1)
+            out = add_playbook(skill_dir, Path(args.playbook), args.scene)
+            print(f"Playbook written: {out}")
         return
 
     if args.action == "create":

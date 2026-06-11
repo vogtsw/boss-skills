@@ -1,0 +1,13 @@
+{
+  "id": "case-001",
+  "scene": "项目评审",
+  "situation": "团队提出 Q3 重构网关,预计 3 人月,同时顺带升级监控面板",
+  "options_visible": ["整体方案通过", "缩小范围只做核心链路", "推迟到 Q4"],
+  "boss_questions": ["结论是什么?", "不做的代价是什么?", "owner 是谁?"],
+  "decision": "缩小范围,先做核心链路,监控面板砍掉",
+  "rationale": "资源只给关键链路,不给顺手一起做的需求",
+  "quote": "先把核心链路搞定,顺手的事一律砍掉",
+  "outcome": "核心链路按期上线,监控面板 Q4 单独立项",
+  "confidence": "high",
+  "source": "knowledge/meetings/2026-03-12-gateway-review.md"
+}

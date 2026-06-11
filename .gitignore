@@ -4,3 +4,8 @@ __pycache__/
 bosses/*
 !bosses/example-laozhou/
 !bosses/example-laozhou/**
+bosses/example-laozhou/eval/
+
+AGENTS.MD
+AGENTS.md
+.tmp-test/

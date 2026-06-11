@@ -1,0 +1,52 @@
+{
+  "version": "v1",
+  "built_from_cases": ["case-001", "case-002", "case-003"],
+  "items": [
+    {
+      "id": "conclusion-first",
+      "check": "方案是否第一句就给出结论",
+      "pass_if": "开头三句内有明确结论",
+      "fail_action": "打断并要求先说结论",
+      "boss_question": "结论是什么?",
+      "evidence": ["case-001"],
+      "weight": "blocker"
+    },
+    {
+      "id": "cost-of-inaction",
+      "check": "是否说清不做的代价",
+      "pass_if": "有量化或可验证的代价描述",
+      "fail_action": "追问后未答出则方案不过",
+      "boss_question": "这个不做会怎样?",
+      "evidence": ["case-001"],
+      "weight": "blocker"
+    },
+    {
+      "id": "owner-clear",
+      "check": "owner 是否明确且是能拿回结果的人",
+      "pass_if": "有具名 owner,且 owner 能答出风险兜底",
+      "fail_action": "owner 不明确则不排期",
+      "boss_question": "owner 是谁?",
+      "evidence": ["case-001"],
+      "weight": "blocker"
+    },
+    {
+      "id": "critical-path-only",
+      "check": "需求是否在关键链路上,有没有夹带顺手需求",
+      "pass_if": "每一项都能对应到关键链路",
+      "fail_action": "顺手需求当场砍掉",
+      "boss_question": "卡在哪条关键链路?",
+      "evidence": ["case-001", "case-003"],
+      "weight": "major"
+    },
+    {
+      "id": "risk-bottom-line",
+      "check": "是否有风险兜底方案和备选",
+      "pass_if": "说得出最坏情况和回退路径",
+      "fail_action": "要求补齐后再议",
+      "boss_question": "风险你打算怎么兜?",
+      "evidence": ["case-001"],
+      "weight": "major"
+    }
+  ],
+  "verdict_logic": "任一 blocker 不过则整体不过;major 缺 2 项以上要求补齐后再议"
+}
