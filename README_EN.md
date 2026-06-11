@@ -27,9 +27,21 @@ It now has more capability lines:
 - quantify fidelity with **decision replay evaluation**
 - build a persona for a **mentor / PI / public figure** from free public sources (papers, GitHub, Wikipedia, interviews) when no private chat material exists
 
-[Data Sources](#data-sources) · [Installation](#installation) · [Usage](#usage) · [New Feature Entrepreneur Archetype Mode](#new-feature-entrepreneur-archetype-mode) · [Examples](#examples) · [Structure](#generated-skill-structure) · [Detailed Install Guide](INSTALL.md) · [中文](README.md)
+[Data Sources](#data-sources) · [Installation](#installation) · [Usage](#usage) · [Entrepreneur Archetypes](#new-feature-entrepreneur-archetype-mode) · [Decision Layer](#new-feature-structured-decision-layer-judge-like-the-boss-not-just-sound-like-the-boss) · [Public Research](#new-feature-public-research-mode-mentor--pi--public-figure) · [Examples](#examples) · [Structure](#generated-skill-structure) · [Detailed Install Guide](INSTALL.md) · [中文](README.md)
 
 </div>
+
+## What's New (v1.2)
+
+Three new capability lines, detailed in their own sections below:
+
+| New feature | One-line summary |
+|--------|-----------|
+| **Structured decision layer** | Distill the boss's thinking into an executable decision model: `cases/` decision case base (with original quotes and sources), `rubric.json` review scorecard, `decision_rules.md` IF/THEN rules, and `playbooks/` scene workflows (bad news, resource requests, ... as step-by-step SOPs). The skill upgrades from "sounding like the boss" to "judging like the boss" |
+| **Decision replay eval** | Hold out 20% of historical decisions, blind-predict the boss's real choices with the distilled model, and use the hit rate as the fidelity score. Run with `/boss-eval {slug}`; re-run after every correction to catch drift |
+| **Public research mode** | Build a persona for a **mentor / PI / public figure** with zero chat logs. `tools/person_research.py` aggregates 6 free no-API-key sources (OpenAlex / Semantic Scholar / arXiv / Crossref / GitHub / Wikipedia), disambiguates same-name candidates, and labels every claim with its evidence level and source |
+
+Also new: `/{slug}-drill` rehearsal mode (the skill plays the boss for multiple turns, then debriefs against the rubric), 5 new prompts (decision extraction / model induction / playbook building / person research / replay eval), and a complete example in [`bosses/example-laozhou/`](bosses/example-laozhou/).
 
 ---
 
